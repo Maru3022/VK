@@ -13,11 +13,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   JAVA_VERSION: '21'
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+u-latest
     permissions:
       contents: read
       checks: write
@@ -52,7 +48,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: vk-service-jar
-          path: target/*.jar
+          path: vk-service/target/*.jar
           retention-days: 7
 
   code-quality:
@@ -67,14 +63,14 @@ jobs:
           cache: maven
       - run: |
           mvn -B org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=11 -Dformats=HTML,JSON || true
+            -DfailBuildOnCVSS=11 -Dformats=HTML,JSON -f vk-service/pom.xml || true
         env:
           NVD_API_KEY: "${{ secrets.NVD_API_KEY }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dependency-check-report
-          path: target/dependency-check-report.html
+          path: vk-service/target/dependency-check-report.html
 
   integration-test:
     needs: build-and-test
@@ -113,7 +109,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: vk-service-jar
-          path: target/
+          path: vk-service/target/
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -131,7 +127,7 @@ jobs:
       - uses: docker/build-push-action@v5
         id: build-push
         with:
-          context: .
+          context: ./vk-service
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
@@ -162,7 +158,7 @@ jobs:
       - run: |
           ssh -o StrictHostKeyChecking=no ${{ env.USER }}@${{ env.HOST }} << 'EOF'
             cd /opt/vk-service
-            docker compose pull
+            docker compose pull vk-service
             docker compose up -d --no-deps --force-recreate vk-service
             docker image prune -f
           EOF
@@ -193,7 +189,7 @@ jobs:
       - run: |
           ssh -o StrictHostKeyChecking=no ${{ env.USER }}@${{ env.HOST }} << 'EOF'
             cd /opt/vk-service
-            docker compose pull
+            docker compose pull vk-service
             docker compose up -d --no-deps --force-recreate vk-service
             docker image prune -f
           EOF
@@ -222,14 +218,14 @@ jobs:
     steps:
       - if: env.SLACK == ''
         run: echo "Slack not configured" && exit 0
-      - if: (needs.deploy-production.result == 'success' || needs.deploy-staging.result == 'success')
+      - if: needs.deploy-production.result == 'success' || needs.deploy-staging.result == 'success'
         uses: slackapi/slack-github-action@v2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
             {"text":"✅ vk-service deployed: ${{ github.ref_name }} @ ${{ github.sha }} by ${{ github.actor }}"}
-      - if: (needs.deploy-production.result == 'failure' || needs.deploy-staging.result == 'failure')
+      - if: needs.deploy-production.result == 'failure' || needs.deploy-staging.result == 'failure'
         uses: slackapi/slack-github-action@v2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}

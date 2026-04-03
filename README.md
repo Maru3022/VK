@@ -3,6 +3,7 @@
 gRPC key-value сервис на Java 21 + Tarantool 3.2 + Redis кэш.
 
 ## Архитектура
+
 ```mermaid
 graph LR
   Client -->|gRPC| VkGrpcService
@@ -79,6 +80,7 @@ L1: Redis (TTL 60s) → L2: Tarantool
 - Оптимизировано для работы с 5 000 000+ записей.
 
 ## CI/CD Pipeline
+
 ```mermaid
 graph TD
   Push --> Build[Build and Test]

@@ -18,7 +18,7 @@
     <properties>
         <java.version>21</java.version>
         <tarantool.sdk.version>1.5.0</tarantool.sdk.version>
-        <grpc.spring.boot.starter.version>3.1.0.Release</grpc.spring.boot.starter.version>
+        <grpc.spring.boot.starter.version>3.1.0.RELEASE</grpc.spring.boot.starter.version>
         <protobuf.version>3.25.1</protobuf.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
         <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
@@ -40,7 +40,7 @@
         <dependency>
             <groupId>net.devh</groupId>
             <artifactId>grpc-spring-boot-starter</artifactId>
-            <version>${grpc.spring.boot.starter.version}</version>
+            <version>3.1.0.RELEASE</version>
         </dependency>
 
         <!-- Protobuf -->
@@ -58,7 +58,7 @@
         <!-- Tarantool -->
         <dependency>
             <groupId>io.tarantool</groupId>
-            <artifactId>tarantool-java-sdk</artifactId>
+            <artifactId>cartridge-driver-api</artifactId>
             <version>${tarantool.sdk.version}</version>
         </dependency>
 
@@ -114,7 +114,7 @@
         <dependency>
             <groupId>net.devh</groupId>
             <artifactId>grpc-testing</artifactId>
-            <version>${grpc.spring.boot.starter.version}</version>
+            <version>3.1.0.RELEASE</version>
             <scope>test</scope>
         </dependency>
         <dependency>
