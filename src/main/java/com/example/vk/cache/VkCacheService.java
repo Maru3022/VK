@@ -3,6 +3,7 @@ package com.example.vk.cache;
 import com.example.vk.metrics.VkMetrics;
 import com.example.vk.proto.VkPair;
 import com.example.vk.repository.TarantoolVkRepository;
+import com.example.vk.repository.VkValue;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ public class VkCacheService {
 
     private static final byte[] NULL_SENTINEL = {0x00};
 
-    public Optional<byte[]> get(String key) {
+    public VkValue get(String key) {
         String cacheKey = "vk:" + key;
         metrics.recordCacheTotal();
         try {
@@ -36,18 +37,18 @@ public class VkCacheService {
             if (cached != null) {
                 metrics.recordCacheHit();
                 if (Arrays.equals(cached, NULL_SENTINEL)) {
-                    return Optional.of(null);
+                    return VkValue.found(null);
                 }
-                return Optional.of(cached);
+                return VkValue.found(cached);
             }
         } catch (Exception e) {
             log.warn("Redis unavailable for get, fallback: {}", e.getMessage());
         }
 
-        Optional<byte[]> result = repository.get(key);
-        if (result.isPresent()) {
+        VkValue result = repository.get(key);
+        if (result.isExists()) {
             try {
-                byte[] toCache = result.get() == null ? NULL_SENTINEL : result.get();
+                byte[] toCache = result.getData() == null ? NULL_SENTINEL : result.getData();
                 redisTemplate.opsForValue().set(cacheKey, toCache, ttl, TimeUnit.SECONDS);
             } catch (Exception e) {
                 log.warn("Redis write failed: {}", e.getMessage());

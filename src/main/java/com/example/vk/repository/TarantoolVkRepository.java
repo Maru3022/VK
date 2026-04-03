@@ -41,29 +41,26 @@ public class TarantoolVkRepository {
     public boolean put(String key, byte[] value) {
         log.debug("Tarantool put: key={}", key);
         try {
-            Optional<byte[]> existing = get(key);
+            VkValue existing = get(key);
             TarantoolTuple tuple = tupleFactory.create(List.of(key, value != null ? value : null));
             space.replace(tuple).get();
-            return existing.isPresent();
+            return existing.isExists();
         } catch (InterruptedException | ExecutionException e) {
             throw new VkException("UNAVAILABLE", "Tarantool replace failed", e);
         }
     }
 
-    public Optional<byte[]> get(String key) {
+    public VkValue get(String key) {
         log.debug("Tarantool get: key={}", key);
         try {
             TarantoolResult<TarantoolTuple> result = space.select(TarantoolConditions.equals("primary", List.of(key))).get();
             if (result.isEmpty()) {
-                return Optional.empty();
+                return VkValue.notFound();
             }
             TarantoolTuple tuple = result.get(0);
             // Index 1 is 'value'
             Object val = tuple.getObject(1).orElse(null);
-            if (val == null) {
-                return Optional.of(null);
-            }
-            return Optional.of((byte[]) val);
+            return VkValue.found((byte[]) val);
         } catch (InterruptedException | ExecutionException e) {
             throw new VkException("UNAVAILABLE", "Tarantool select failed", e);
         }

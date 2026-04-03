@@ -69,8 +69,17 @@ L1: Redis (TTL 60s) → L2: Tarantool
 - **Get**: Redis → промах → Tarantool → запись в Redis.
 - **Put/Delete**: Tarantool → инвалидация Redis.
 - **Range/Count**: всегда Tarantool, без кэширования.
-- **Null value**: sentinel `byte[]{0x00}` в Redis отличает закэшированный null от отсутствия ключа.
+- **Null value**: sentinel `byte[]{0x00}` в Redis и специальный wrapper `VkValue` в Java отличают закэшированный null от отсутствия ключа.
 - **Redis fallback**: автоматическое переключение на Tarantool при недоступности Redis.
+
+## Обработка Null значений
+
+В gRPC (proto3) поля по умолчанию не могут быть `null`. Для поддержки `null` используется `google.protobuf.BytesValue`.
+
+1. **Вставка**: если поле `value` в `PutRequest` отсутствует, в Tarantool записывается `nil`.
+2. **Хранение**: Tarantool поддерживает `is_nullable = true` для поля `value`.
+3. **Кэширование**: в Redis записывается `0x00` (sentinel), если значение в БД — `nil`.
+4. **Получение**: `VkValue` объект в коде содержит флаг `exists` и массив `data`. Если `exists=true` и `data=null`, это означает, что ключ существует, но его значение пустое.
 
 ## Производительность
 

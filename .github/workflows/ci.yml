@@ -27,14 +27,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: temurin
-          cache: maven
-      - uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          distribution: 'temurin'
+          cache: 'maven'
       - name: Build and Test
         run: mvn clean test
       - uses: EnricoMi/publish-unit-test-result-action@v2
@@ -63,8 +57,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: temurin
-          cache: maven
+          distribution: 'temurin'
+          cache: 'maven'
       - run: |
           mvn -B org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=11 -Dformats=HTML,JSON || true
@@ -87,8 +81,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: temurin
-          cache: maven
+          distribution: 'temurin'
+          cache: 'maven'
       - name: Run Integration Tests
         run: mvn verify -Pintegration-tests
       - uses: EnricoMi/publish-unit-test-result-action@v2

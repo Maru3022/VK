@@ -12,6 +12,7 @@ import com.example.vk.proto.VkServiceGrpc;
 import com.example.vk.proto.PutRequest;
 import com.example.vk.proto.PutResponse;
 import com.example.vk.proto.RangeRequest;
+import com.example.vk.repository.VkValue;
 import com.example.vk.service.VkService;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.BytesValue;
@@ -19,8 +20,6 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.server.service.GrpcService;
-
-import java.util.Optional;
 
 @GrpcService
 @RequiredArgsConstructor
@@ -43,13 +42,12 @@ public class VkGrpcService extends VkServiceGrpc.VkServiceImplBase {
     @Override
     public void get(GetRequest request, StreamObserver<GetResponse> responseObserver) {
         try {
-            Optional<byte[]> result = vkService.get(request.getKey());
-            byte[] value = result.get();
+            VkValue value = vkService.get(request.getKey());
             GetResponse.Builder builder = GetResponse.newBuilder()
                     .setKey(request.getKey())
                     .setFound(true);
-            if (value != null) {
-                builder.setValue(BytesValue.newBuilder().setValue(ByteString.copyFrom(value)).build());
+            if (value.getData() != null) {
+                builder.setValue(BytesValue.newBuilder().setValue(ByteString.copyFrom(value.getData())).build());
             }
             responseObserver.onNext(builder.build());
             responseObserver.onCompleted();

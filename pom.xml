@@ -23,6 +23,7 @@
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
         <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
         <testcontainers.version>1.19.7</testcontainers.version>
+        <testcontainers-redis.version>2.2.4</testcontainers-redis.version>
     </properties>
 
     <dependencies>
@@ -40,7 +41,7 @@
         <dependency>
             <groupId>net.devh</groupId>
             <artifactId>grpc-spring-boot-starter</artifactId>
-            <version>3.1.0.RELEASE</version>
+            <version>${grpc.spring.boot.starter.version}</version>
         </dependency>
 
         <!-- Protobuf -->
@@ -58,7 +59,7 @@
         <!-- Tarantool -->
         <dependency>
             <groupId>io.tarantool</groupId>
-            <artifactId>cartridge-driver-api</artifactId>
+            <artifactId>tarantool-client</artifactId>
             <version>${tarantool.sdk.version}</version>
         </dependency>
 
@@ -100,21 +101,21 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>redis</artifactId>
-            <version>${testcontainers.version}</version>
+            <groupId>com.redis</groupId>
+            <artifactId>testcontainers-redis</artifactId>
+            <version>${testcontainers-redis.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>tarantool</artifactId>
-            <version>${testcontainers.version}</version>
+            <groupId>io.tarantool</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${tarantool.sdk.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>net.devh</groupId>
+            <groupId>io.grpc</groupId>
             <artifactId>grpc-testing</artifactId>
-            <version>3.1.0.RELEASE</version>
+            <version>1.62.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>

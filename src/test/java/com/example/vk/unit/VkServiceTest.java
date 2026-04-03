@@ -2,6 +2,7 @@ package com.example.vk.unit;
 
 import com.example.vk.cache.VkCacheService;
 import com.example.vk.exception.VkException;
+import com.example.vk.repository.VkValue;
 import com.example.vk.service.VkService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,25 +45,25 @@ public class VkServiceTest {
 
     @Test
     void get_existingKey_returnsValue() {
-        when(cacheService.get("k")).thenReturn(Optional.of(value));
-        Optional<byte[]> result = vkService.get("k");
-        assertTrue(result.isPresent());
-        assertArrayEquals(value, result.get());
+        when(cacheService.get("k")).thenReturn(VkValue.found(value));
+        VkValue result = vkService.get("k");
+        assertTrue(result.isExists());
+        assertArrayEquals(value, result.getData());
     }
 
     @Test
     void get_missingKey_throwsNotFound() {
-        when(cacheService.get("k")).thenReturn(Optional.empty());
+        when(cacheService.get("k")).thenReturn(VkValue.notFound());
         VkException ex = assertThrows(VkException.class, () -> vkService.get("k"));
         assertEquals("NOT_FOUND", ex.getCode());
     }
 
     @Test
     void get_nullValue_returnsNull() {
-        when(cacheService.get("k")).thenReturn(Optional.of(null));
-        Optional<byte[]> result = vkService.get("k");
-        assertTrue(result.isPresent());
-        assertNull(result.get());
+        when(cacheService.get("k")).thenReturn(VkValue.found(null));
+        VkValue result = vkService.get("k");
+        assertTrue(result.isExists());
+        assertNull(result.getData());
     }
 
     @Test

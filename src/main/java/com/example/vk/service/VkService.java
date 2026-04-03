@@ -3,13 +3,16 @@ package com.example.vk.service;
 import com.example.vk.cache.VkCacheService;
 import com.example.vk.exception.VkException;
 import com.example.vk.proto.VkPair;
+import com.example.vk.repository.VkValue;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VkService {
@@ -31,11 +34,12 @@ public class VkService {
         return cacheService.put(key, value);
     }
 
-    @Timed(value = "vk.request.duration", extraTags = {"method", "get"})
-    public Optional<byte[]> get(String key) {
-        validateKey(key);
-        Optional<byte[]> result = cacheService.get(key);
-        if (result.isEmpty()) {
+    public VkValue get(String key) {
+        if (key == null || key.isEmpty() || key.length() > 256) {
+            throw new VkException("INVALID_ARGUMENT", "Key must be 1-256 chars");
+        }
+        VkValue result = cacheService.get(key);
+        if (!result.isExists()) {
             throw new VkException("NOT_FOUND", "Key not found: " + key);
         }
         return result;
