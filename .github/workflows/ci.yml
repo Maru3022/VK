@@ -13,6 +13,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   JAVA_VERSION: '21'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-test:
@@ -40,11 +41,12 @@ jobs:
         if: always()
         with:
           files: target/surefire-reports/*.xml
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         if: always()
         with:
           files: target/site/jacoco/jacoco.xml
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Package
         run: mvn package -DskipTests
       - uses: actions/upload-artifact@v4

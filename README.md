@@ -5,7 +5,7 @@ gRPC key-value сервис на Java 21 + Tarantool 3.2 + Redis кэш.
 ## Архитектура
 ```mermaid
 graph LR
-  Client -->|gRPC :9090| VkGrpcService
+  Client -->|gRPC| VkGrpcService
   VkGrpcService --> VkService
   VkService --> VkCacheService
   VkCacheService -->|L1 TTL 60s| Redis
@@ -80,16 +80,18 @@ L1: Redis (TTL 60s) → L2: Tarantool
 
 ## CI/CD Pipeline
 ```mermaid
-graph LR
-  push --> build-and-test
-  build-and-test --> code-quality
-  build-and-test --> integration-test
-  build-and-test --> docker-build-push
-  integration-test --> docker-build-push
-  docker-build-push -->|develop| deploy-staging
-  docker-build-push -->|main| deploy-production
-  deploy-staging --> notify
-  deploy-production --> notify
+graph TD
+  Push --> Build[Build and Test]
+  Build --> Quality[Code Quality]
+  Build --> IT[Integration Test]
+  Build --> Docker[Docker Build and Push]
+  IT --> Docker
+  Docker --> Staging{Branch: develop?}
+  Docker --> Production{Branch: main?}
+  Staging -->|Yes| DeployStaging[Deploy Staging]
+  Production -->|Yes| DeployProd[Deploy Production]
+  DeployStaging --> Notify[Notify Slack]
+  DeployProd --> Notify
 ```
 
 ## Kubernetes (Helm)
