@@ -1,0 +1,236 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  JAVA_VERSION: '21'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Build and Test
+        run: mvn clean test -f vk-service/pom.xml
+      - uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: vk-service/target/surefire-reports/*.xml
+      - uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: vk-service/target/site/jacoco/jacoco.xml
+          fail_ci_if_error: false
+      - name: Package
+        run: mvn package -DskipTests -f vk-service/pom.xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vk-service-jar
+          path: vk-service/target/*.jar
+          retention-days: 7
+
+  code-quality:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - run: |
+          mvn -B org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=11 -Dformats=HTML,JSON -f vk-service/pom.xml || true
+        env:
+          NVD_API_KEY: "${{ secrets.NVD_API_KEY }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-check-report
+          path: vk-service/target/dependency-check-report.html
+
+  integration-test:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - name: Run Integration Tests
+        run: mvn verify -Pintegration-tests -f vk-service/pom.xml
+      - uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: vk-service/target/failsafe-reports/*.xml
+          check_name: Integration Tests
+
+  docker-build-push:
+    needs: [build-and-test, integration-test]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.build-push.outputs.digest }}
+    steps:
+      - run: echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/vk-service" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: vk-service-jar
+          path: vk-service/target/
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: "${{ github.actor }}"
+          password: "${{ secrets.GITHUB_TOKEN }}"
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
+        id: build-push
+        with:
+          context: ./vk-service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          image-ref: ghcr.io/${{ env.IMAGE_NAME }}@${{ steps.build-push.outputs.digest }}
+          format: table
+          severity: CRITICAL,HIGH
+
+  deploy-staging:
+    needs: docker-build-push
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+    env:
+      KEY: ${{ secrets.STAGING_SSH_KEY }}
+      HOST: ${{ secrets.STAGING_HOST }}
+      USER: ${{ secrets.STAGING_USER }}
+    steps:
+      - if: env.KEY == '' || env.HOST == ''
+        run: echo "Secrets not set, skipping" && exit 0
+      - uses: webfactory/ssh-agent@v0.9
+        with:
+          ssh-private-key: "${{ secrets.STAGING_SSH_KEY }}"
+      - run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.USER }}@${{ env.HOST }} << 'EOF'
+            cd /opt/vk-service
+            docker compose pull vk-service
+            docker compose up -d --no-deps --force-recreate vk-service
+            docker image prune -f
+          EOF
+      - name: Health check
+        run: |
+          sleep 20
+          curl -f http://${{ env.HOST }}:8080/actuator/health || exit 1
+
+  deploy-production:
+    needs: docker-build-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    environment:
+      name: production
+    env:
+      KEY: ${{ secrets.PROD_SSH_KEY }}
+      HOST: ${{ secrets.PROD_HOST }}
+      USER: ${{ secrets.PROD_USER }}
+    steps:
+      - if: env.KEY == '' || env.HOST == ''
+        run: echo "Secrets not set, skipping" && exit 0
+      - uses: webfactory/ssh-agent@v0.9
+        with:
+          ssh-private-key: "${{ secrets.PROD_SSH_KEY }}"
+      - run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.USER }}@${{ env.HOST }} << 'EOF'
+            cd /opt/vk-service
+            docker compose pull vk-service
+            docker compose up -d --no-deps --force-recreate vk-service
+            docker image prune -f
+          EOF
+      - name: Health check (5 retries)
+        run: |
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${{ env.HOST }}:8080/actuator/health)
+            [ "$STATUS" = "200" ] && exit 0
+            sleep 10
+          done
+          exit 1
+      - name: Tag release
+        env:
+          GH_TOKEN: "${{ github.token }}"
+        run: |
+          TAG="release-$(date -u +%Y-%m-%d)-${{ github.run_number }}"
+          gh api -X POST repos/${{ github.repository }}/git/refs \
+            -f ref=refs/tags/${TAG} -f sha=${{ github.sha }}
+
+  notify:
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      SLACK: "${{ secrets.SLACK_WEBHOOK_URL }}"
+    steps:
+      - if: env.SLACK == ''
+        run: echo "Slack not configured" && exit 0
+      - if: needs.deploy-production.result == 'success' || needs.deploy-staging.result == 'success'
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {"text":"✅ vk-service deployed: ${{ github.ref_name }} @ ${{ github.sha }} by ${{ github.actor }}"}
+      - if: needs.deploy-production.result == 'failure' || needs.deploy-staging.result == 'failure'
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {"text":"❌ vk-service deploy FAILED: ${{ github.ref_name }} by ${{ github.actor }} — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: vk-service
+version: 1.0.0
+appVersion: 1.0.0
+description: A gRPC key-value service on Java 21 + Tarantool 3.2 + Redis cache

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  tarantool:
+    image: tarantool/tarantool:3.2
+    volumes:
+      - ./tarantool/init.lua:/opt/tarantool/init.lua
+    ports:
+      - "3301:3301"
+    healthcheck:
+      test: ["CMD", "tt", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  vk-service:
+    build: .
+    depends_on:
+      tarantool:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "9090:9090"
+      - "8080:8080"
+    environment:
+      TARANTOOL_HOST: tarantool
+      TARANTOOL_PORT: 3301
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      retries: 5
