@@ -35,22 +35,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: Build and Test
-        run: mvn clean test -f vk-service/pom.xml
+        run: mvn clean test
       - uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: vk-service/target/surefire-reports/*.xml
+          files: target/surefire-reports/*.xml
       - uses: codecov/codecov-action@v4
         if: always()
         with:
-          files: vk-service/target/site/jacoco/jacoco.xml
+          files: target/site/jacoco/jacoco.xml
           fail_ci_if_error: false
       - name: Package
-        run: mvn package -DskipTests -f vk-service/pom.xml
+        run: mvn package -DskipTests
       - uses: actions/upload-artifact@v4
         with:
           name: vk-service-jar
-          path: vk-service/target/*.jar
+          path: target/*.jar
           retention-days: 7
 
   code-quality:
@@ -65,14 +65,14 @@ jobs:
           cache: maven
       - run: |
           mvn -B org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=11 -Dformats=HTML,JSON -f vk-service/pom.xml || true
+            -DfailBuildOnCVSS=11 -Dformats=HTML,JSON || true
         env:
           NVD_API_KEY: "${{ secrets.NVD_API_KEY }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dependency-check-report
-          path: vk-service/target/dependency-check-report.html
+          path: target/dependency-check-report.html
 
   integration-test:
     needs: build-and-test
@@ -88,11 +88,11 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Run Integration Tests
-        run: mvn verify -Pintegration-tests -f vk-service/pom.xml
+        run: mvn verify -Pintegration-tests
       - uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: vk-service/target/failsafe-reports/*.xml
+          files: target/failsafe-reports/*.xml
           check_name: Integration Tests
 
   docker-build-push:
@@ -111,7 +111,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: vk-service-jar
-          path: vk-service/target/
+          path: target/
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -129,7 +129,7 @@ jobs:
       - uses: docker/build-push-action@v5
         id: build-push
         with:
-          context: ./vk-service
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
@@ -160,7 +160,7 @@ jobs:
       - run: |
           ssh -o StrictHostKeyChecking=no ${{ env.USER }}@${{ env.HOST }} << 'EOF'
             cd /opt/vk-service
-            docker compose pull vk-service
+            docker compose pull
             docker compose up -d --no-deps --force-recreate vk-service
             docker image prune -f
           EOF
@@ -191,7 +191,7 @@ jobs:
       - run: |
           ssh -o StrictHostKeyChecking=no ${{ env.USER }}@${{ env.HOST }} << 'EOF'
             cd /opt/vk-service
-            docker compose pull vk-service
+            docker compose pull
             docker compose up -d --no-deps --force-recreate vk-service
             docker image prune -f
           EOF
@@ -220,14 +220,14 @@ jobs:
     steps:
       - if: env.SLACK == ''
         run: echo "Slack not configured" && exit 0
-      - if: needs.deploy-production.result == 'success' || needs.deploy-staging.result == 'success'
+      - if: (needs.deploy-production.result == 'success' || needs.deploy-staging.result == 'success')
         uses: slackapi/slack-github-action@v2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
             {"text":"✅ vk-service deployed: ${{ github.ref_name }} @ ${{ github.sha }} by ${{ github.actor }}"}
-      - if: needs.deploy-production.result == 'failure' || needs.deploy-staging.result == 'failure'
+      - if: (needs.deploy-production.result == 'failure' || needs.deploy-staging.result == 'failure')
         uses: slackapi/slack-github-action@v2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,15 +1,113 @@
 # VK Project
 
-This repository contains the `vk-service` project.
+gRPC key-value сервис на Java 21 + Tarantool 3.2 + Redis кэш.
 
-## Structure
+## Архитектура
+```mermaid
+graph LR
+  Client -->|gRPC :9090| VkGrpcService
+  VkGrpcService --> VkService
+  VkService --> VkCacheService
+  VkCacheService -->|L1 TTL 60s| Redis
+  VkCacheService -->|L2 fallback| Tarantool
+  VkGrpcService --> VkMetrics
+  VkMetrics --> Prometheus
+  Prometheus --> Grafana
+```
 
-- `vk-service/`: Main gRPC service implementation.
-  - `src/`: Source code.
-  - `tarantool/`: Tarantool initialization scripts.
-  - `monitoring/`: Prometheus and Grafana configurations.
-  - `helm/`: Helm charts for Kubernetes deployment.
-  - `Dockerfile`: Multi-stage Docker build.
-  - `docker-compose.yml`: Local deployment setup.
+## Быстрый старт
 
-For more details, see [vk-service/README.md](vk-service/README.md).
+```bash
+git clone https://github.com/Maru3022/VK.git
+cd VK
+docker-compose up --build
+docker-compose -f docker-compose.monitoring.yml up -d
+```
+
+- **gRPC API**: `localhost:9090`
+- **Actuator/Health**: `localhost:8080/actuator/health`
+- **Grafana**: `localhost:3000` (admin/admin)
+- **Prometheus**: `localhost:9091`
+
+## API Reference (grpcurl)
+
+### Put (вставка)
+```bash
+grpcurl -plaintext -d '{"key":"hello","value":"d29ybGQ="}' localhost:9090 vk.VkService/Put
+```
+
+### Put null (вставка пустого значения)
+```bash
+grpcurl -plaintext -d '{"key":"nullkey"}' localhost:9090 vk.VkService/Put
+```
+
+### Get (получение)
+```bash
+grpcurl -plaintext -d '{"key":"hello"}' localhost:9090 vk.VkService/Get
+```
+
+### Delete (удаление)
+```bash
+grpcurl -plaintext -d '{"key":"hello"}' localhost:9090 vk.VkService/Delete
+```
+
+### Range (диапазон)
+```bash
+grpcurl -plaintext -d '{"key_since":"a","key_to":"z","page_size":100}' localhost:9090 vk.VkService/Range
+```
+
+### Count (количество)
+```bash
+grpcurl -plaintext localhost:9090 vk.VkService/Count
+```
+
+## Стратегия кэширования
+
+L1: Redis (TTL 60s) → L2: Tarantool
+
+- **Get**: Redis → промах → Tarantool → запись в Redis.
+- **Put/Delete**: Tarantool → инвалидация Redis.
+- **Range/Count**: всегда Tarantool, без кэширования.
+- **Null value**: sentinel `byte[]{0x00}` в Redis отличает закэшированный null от отсутствия ключа.
+- **Redis fallback**: автоматическое переключение на Tarantool при недоступности Redis.
+
+## Производительность
+
+- **Range**: использование итератора `GE` с батчами по 500 записей (без полной загрузки в память).
+- **Count**: выполнение `box.space.VK:len()` на стороне Tarantool за O(1).
+- **Пул соединений**: min 2 / max 10 соединений к Tarantool.
+- Оптимизировано для работы с 5 000 000+ записей.
+
+## CI/CD Pipeline
+```mermaid
+graph LR
+  push --> build-and-test
+  build-and-test --> code-quality
+  build-and-test --> integration-test
+  build-and-test --> docker-build-push
+  integration-test --> docker-build-push
+  docker-build-push -->|develop| deploy-staging
+  docker-build-push -->|main| deploy-production
+  deploy-staging --> notify
+  deploy-production --> notify
+```
+
+## Kubernetes (Helm)
+
+```bash
+helm upgrade --install vk-service ./helm/vk-service \
+  --set image.tag=latest \
+  --namespace vk --create-namespace
+```
+
+**HPA**: min 2 / max 10 реплик, CPU target 70%.
+
+## Технические решения
+
+| Решение | Обоснование |
+|---|---|
+| **BytesValue** | Позволяет передавать `null` в gRPC (proto3). |
+| **GE Cursor** | Оптимально для больших диапазонов (5М+ записей). |
+| **Redis Sentinel** | Предотвращает "cache stampede" для null-значений. |
+| **Fallback** | Приоритет доступности над консистентностью кэша. |
+| **Separate Monitoring** | Вынос мониторинга в отдельный compose для гибкости. |
