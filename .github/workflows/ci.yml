@@ -13,7 +13,11 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   JAVA_VERSION: '21'
-u-latest
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
@@ -48,7 +52,7 @@ u-latest
       - uses: actions/upload-artifact@v4
         with:
           name: vk-service-jar
-          path: vk-service/target/*.jar
+          path: target/*.jar
           retention-days: 7
 
   code-quality:
@@ -63,14 +67,14 @@ u-latest
           cache: maven
       - run: |
           mvn -B org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=11 -Dformats=HTML,JSON -f vk-service/pom.xml || true
+            -DfailBuildOnCVSS=11 -Dformats=HTML,JSON || true
         env:
           NVD_API_KEY: "${{ secrets.NVD_API_KEY }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dependency-check-report
-          path: vk-service/target/dependency-check-report.html
+          path: target/dependency-check-report.html
 
   integration-test:
     needs: build-and-test
@@ -109,7 +113,7 @@ u-latest
       - uses: actions/download-artifact@v4
         with:
           name: vk-service-jar
-          path: vk-service/target/
+          path: target/
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -127,7 +131,7 @@ u-latest
       - uses: docker/build-push-action@v5
         id: build-push
         with:
-          context: ./vk-service
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
