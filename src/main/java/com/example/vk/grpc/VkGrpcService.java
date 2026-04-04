@@ -19,8 +19,10 @@ import com.google.protobuf.BytesValue;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 
+@Slf4j
 @GrpcService
 @RequiredArgsConstructor
 public class VkGrpcService extends VkServiceGrpc.VkServiceImplBase {
@@ -35,7 +37,11 @@ public class VkGrpcService extends VkServiceGrpc.VkServiceImplBase {
             responseObserver.onNext(PutResponse.newBuilder().setUpdated(updated).build());
             responseObserver.onCompleted();
         } catch (VkException e) {
+            log.warn("Put error: {} - {}", e.getCode(), e.getMessage());
             responseObserver.onError(mapToGrpcStatus(e).asRuntimeException());
+        } catch (Exception e) {
+            log.error("Unexpected put error", e);
+            responseObserver.onError(Status.INTERNAL.withDescription("Internal server error").asRuntimeException());
         }
     }
 
@@ -52,7 +58,11 @@ public class VkGrpcService extends VkServiceGrpc.VkServiceImplBase {
             responseObserver.onNext(builder.build());
             responseObserver.onCompleted();
         } catch (VkException e) {
+            log.warn("Get error: {} - {}", e.getCode(), e.getMessage());
             responseObserver.onError(mapToGrpcStatus(e).asRuntimeException());
+        } catch (Exception e) {
+            log.error("Unexpected get error", e);
+            responseObserver.onError(Status.INTERNAL.withDescription("Internal server error").asRuntimeException());
         }
     }
 
@@ -63,7 +73,11 @@ public class VkGrpcService extends VkServiceGrpc.VkServiceImplBase {
             responseObserver.onNext(DeleteResponse.newBuilder().setDeleted(true).build());
             responseObserver.onCompleted();
         } catch (VkException e) {
+            log.warn("Delete error: {} - {}", e.getCode(), e.getMessage());
             responseObserver.onError(mapToGrpcStatus(e).asRuntimeException());
+        } catch (Exception e) {
+            log.error("Unexpected delete error", e);
+            responseObserver.onError(Status.INTERNAL.withDescription("Internal server error").asRuntimeException());
         }
     }
 
@@ -74,7 +88,11 @@ public class VkGrpcService extends VkServiceGrpc.VkServiceImplBase {
             responseObserver.onNext(CountResponse.newBuilder().setCount(count).build());
             responseObserver.onCompleted();
         } catch (VkException e) {
+            log.warn("Count error: {} - {}", e.getCode(), e.getMessage());
             responseObserver.onError(mapToGrpcStatus(e).asRuntimeException());
+        } catch (Exception e) {
+            log.error("Unexpected count error", e);
+            responseObserver.onError(Status.INTERNAL.withDescription("Internal server error").asRuntimeException());
         }
     }
 
@@ -82,8 +100,12 @@ public class VkGrpcService extends VkServiceGrpc.VkServiceImplBase {
     public void range(RangeRequest request, StreamObserver<VkPair> responseObserver) {
         try {
             vkService.range(request.getKeySince(), request.getKeyTo(), request.getPageSize(), responseObserver);
+        } catch (VkException e) {
+            log.warn("Range error: {} - {}", e.getCode(), e.getMessage());
+            responseObserver.onError(mapToGrpcStatus(e).asRuntimeException());
         } catch (Exception e) {
-            responseObserver.onError(Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
+            log.error("Unexpected range error", e);
+            responseObserver.onError(Status.INTERNAL.withDescription("Internal server error").asRuntimeException());
         }
     }
 

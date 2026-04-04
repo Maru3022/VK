@@ -124,8 +124,9 @@ public class TarantoolVkRepository {
                     break;
                 }
                 
-                // Move to next batch
-                currentKey = lastKey + "\0"; // Small hack to get next key after lastKey
+                // Move to next batch. We append a null byte (\0) to the last key 
+                // to get the next lexicographical key for the GE (Greater-Equal) iterator.
+                currentKey = lastKey + "\0";
             }
             observer.onCompleted();
         } catch (Exception e) {

@@ -18,7 +18,7 @@
     <properties>
         <java.version>21</java.version>
         <tarantool.driver.version>0.14.3</tarantool.driver.version>
-        <tarantool.testcontainers.version>1.5.0</tarantool.testcontainers.version>
+        <tarantool.testcontainers.version>1.4.0</tarantool.testcontainers.version>
         <grpc.spring.boot.starter.version>3.1.0.RELEASE</grpc.spring.boot.starter.version>
         <protobuf.version>3.25.1</protobuf.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
