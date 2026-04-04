@@ -59,7 +59,7 @@ public class VkIntegrationTest {
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry r) {
         r.add("tarantool.host", tarantool::getHost);
-        r.add("tarantool.port", tarantool::getPort);
+        r.add("tarantool.port", () -> tarantool.getMappedPort(3301));
         r.add("spring.data.redis.host", redis::getHost);
         r.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
     }
