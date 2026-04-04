@@ -3,7 +3,14 @@
     "allow": [
       "WebSearch",
       "WebFetch(tarantool.github.io)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash)",
+      "WebFetch(github.com)",
+      "WebFetch(repo1.maven.org)",
+      "WebFetch(raw.githubusercontent.com)"
     ]
   },
   "$version": 3

@@ -1,10 +1,7 @@
 package com.example.vk.config;
 
 import io.tarantool.driver.api.TarantoolClient;
-import io.tarantool.driver.api.TarantoolClientConfig;
 import io.tarantool.driver.api.TarantoolClientFactory;
-import io.tarantool.driver.api.TarantoolClusterAddressProvider;
-import io.tarantool.driver.api.TarantoolServerAddress;
 import io.tarantool.driver.api.TarantoolResult;
 import io.tarantool.driver.api.space.TarantoolSpaceOperations;
 import io.tarantool.driver.api.tuple.TarantoolTuple;
@@ -12,8 +9,6 @@ import io.tarantool.driver.auth.SimpleTarantoolCredentials;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.Collections;
 
 @Configuration
 public class TarantoolConfig {
@@ -36,24 +31,14 @@ public class TarantoolConfig {
     @Value("${tarantool.read-timeout-ms:3000}")
     private int readTimeout;
 
-    @Value("${tarantool.pool.min-connections:2}")
-    private int minConnections;
-
-    @Value("${tarantool.pool.max-connections:10}")
-    private int maxConnections;
-
     @Bean
     public TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> tarantoolClient() {
-        TarantoolClientConfig config = TarantoolClientConfig.builder()
+        return TarantoolClientFactory.createClient()
+                .withAddress(host, port)
+                .withCredentials(new SimpleTarantoolCredentials(user, password))
                 .withConnectTimeout(connectTimeout)
                 .withReadTimeout(readTimeout)
-                .withCredentials(new SimpleTarantoolCredentials(user, password))
                 .build();
-
-        TarantoolClusterAddressProvider addressProvider = () ->
-                Collections.singletonList(new TarantoolServerAddress(host, port));
-
-        return TarantoolClientFactory.createClient(config, addressProvider);
     }
 
     @Bean

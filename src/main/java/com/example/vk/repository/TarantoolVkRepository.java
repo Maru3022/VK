@@ -18,9 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 @Repository
@@ -35,7 +33,6 @@ public class TarantoolVkRepository {
                                  TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> space) {
         this.client = client;
         this.space = space;
-        // In 0.14.3, we can create a new mapper
         MessagePackMapper mapper = new DefaultMessagePackMapper();
         this.tupleFactory = new DefaultTarantoolTupleFactory(mapper);
     }
@@ -55,14 +52,15 @@ public class TarantoolVkRepository {
     public VkValue get(String key) {
         log.debug("Tarantool get: key={}", key);
         try {
-            TarantoolResult<TarantoolTuple> result = space.select(Conditions.equals("primary", List.of(key))).get();
+            TarantoolResult<TarantoolTuple> result = space.select(
+                    Conditions.indexEquals("primary", List.of(key))
+            ).get();
             if (result.isEmpty()) {
                 return VkValue.notFound();
             }
             TarantoolTuple tuple = result.get(0);
-            // Index 1 is 'value'
-            Object val = tuple.getObject(1).orElse(null);
-            return VkValue.found((byte[]) val);
+            byte[] val = tuple.getObject(1, byte[].class).orElse(null);
+            return VkValue.found(val);
         } catch (InterruptedException | ExecutionException e) {
             throw new VkException("UNAVAILABLE", "Tarantool select failed", e);
         }
@@ -71,7 +69,9 @@ public class TarantoolVkRepository {
     public boolean delete(String key) {
         log.debug("Tarantool delete: key={}", key);
         try {
-            TarantoolResult<TarantoolTuple> result = space.delete(Conditions.equals("primary", List.of(key))).get();
+            TarantoolResult<TarantoolTuple> result = space.delete(
+                    Conditions.indexEquals("primary", List.of(key))
+            ).get();
             return !result.isEmpty();
         } catch (InterruptedException | ExecutionException e) {
             throw new VkException("UNAVAILABLE", "Tarantool delete failed", e);
@@ -97,7 +97,7 @@ public class TarantoolVkRepository {
             String currentKey = keySince;
             while (true) {
                 TarantoolResult<TarantoolTuple> batch = space.select(
-                        Conditions.greaterOrEquals("primary", List.of(currentKey))
+                        Conditions.indexGreaterOrEquals("primary", List.of(currentKey))
                                 .withLimit(pageSize)
                 ).get();
 
@@ -108,15 +108,18 @@ public class TarantoolVkRepository {
                 String lastKey = null;
                 for (TarantoolTuple tuple : batch) {
                     String key = tuple.getString(0);
+                    if (key == null) {
+                        continue;
+                    }
                     if (keyTo != null && !keyTo.isEmpty() && key.compareTo(keyTo) > 0) {
                         observer.onCompleted();
                         return;
                     }
 
-                    Object val = tuple.getObject(1).orElse(null);
+                    byte[] val = tuple.getObject(1, byte[].class).orElse(null);
                     VkPair.Builder builder = VkPair.newBuilder().setKey(key);
                     if (val != null) {
-                        builder.setValue(BytesValue.newBuilder().setValue(ByteString.copyFrom((byte[]) val)).build());
+                        builder.setValue(BytesValue.newBuilder().setValue(ByteString.copyFrom(val)).build());
                     }
                     observer.onNext(builder.build());
                     lastKey = key;
@@ -125,9 +128,7 @@ public class TarantoolVkRepository {
                 if (batch.size() < pageSize) {
                     break;
                 }
-                
-                // Move to next batch. We append a null byte (\0) to the last key 
-                // to get the next lexicographical key for the GE (Greater-Equal) iterator.
+
                 currentKey = lastKey + "\0";
             }
             observer.onCompleted();
