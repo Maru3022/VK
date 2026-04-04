@@ -1,11 +1,12 @@
 package com.example.vk.config;
 
 import io.tarantool.driver.api.TarantoolClient;
-import io.tarantool.driver.api.TarantoolClientFactory;
+import io.tarantool.driver.api.TarantoolClientConfig;
 import io.tarantool.driver.api.TarantoolResult;
 import io.tarantool.driver.api.space.TarantoolSpaceOperations;
 import io.tarantool.driver.api.tuple.TarantoolTuple;
 import io.tarantool.driver.auth.SimpleTarantoolCredentials;
+import java.lang.reflect.Method;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,12 +39,23 @@ public class TarantoolConfig {
     @Bean
     @Lazy
     public TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> tarantoolClient() {
-        client = TarantoolClientFactory.createClient()
-                .withAddress(host, port)
+        TarantoolClientConfig config = TarantoolClientConfig.builder()
                 .withCredentials(new SimpleTarantoolCredentials(user, password))
                 .withConnectTimeout(connectTimeout)
                 .withReadTimeout(readTimeout)
                 .build();
+
+        // Используем Reflection для создания клиента из-за проблем с API
+        try {
+            Class<?> clientFactoryClass = Class.forName("io.tarantool.driver.core.TarantoolClientFactory");
+            Object clientFactory = clientFactoryClass.getMethod("getInstance").invoke(null);
+            Method createMethod = clientFactoryClass.getMethod("create", 
+                    TarantoolClientConfig.class, io.tarantool.driver.api.TarantoolServerAddress.class);
+            client = (TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>>) 
+                    createMethod.invoke(clientFactory, config, new io.tarantool.driver.api.TarantoolServerAddress(host, port));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create Tarantool client", e);
+        }
         return client;
     }
 

@@ -54,7 +54,7 @@ public class TarantoolVkRepository {
         log.debug("Tarantool get: key={}", key);
         try {
             TarantoolResult<TarantoolTuple> result = space.select(
-                    Conditions.indexEquals("primary", List.of(key))
+                    Conditions.equals(0, key)
             ).get();
             if (result.isEmpty()) {
                 return VkValue.notFound();
@@ -71,7 +71,7 @@ public class TarantoolVkRepository {
         log.debug("Tarantool delete: key={}", key);
         try {
             TarantoolResult<TarantoolTuple> result = space.delete(
-                    Conditions.indexEquals("primary", List.of(key))
+                    Conditions.equals(0, key)
             ).get();
             return !result.isEmpty();
         } catch (InterruptedException | ExecutionException e) {
@@ -84,7 +84,10 @@ public class TarantoolVkRepository {
         try {
             List<?> result = client.eval("return box.space.VK:len()").get();
             if (result != null && !result.isEmpty()) {
-                return ((Number) result.get(0)).longValue();
+                Object obj = result.get(0);
+                if (obj instanceof Number) {
+                    return ((Number) obj).longValue();
+                }
             }
             return 0L;
         } catch (InterruptedException | ExecutionException e) {
@@ -98,7 +101,7 @@ public class TarantoolVkRepository {
             String currentKey = keySince;
             while (true) {
                 TarantoolResult<TarantoolTuple> batch = space.select(
-                        Conditions.indexGreaterOrEquals("primary", List.of(currentKey))
+                        Conditions.greaterOrEquals(0, currentKey)
                                 .withLimit(pageSize)
                 ).get();
 

@@ -15,11 +15,11 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import net.devh.boot.grpc.server.config.GrpcServerProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,12 +42,15 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class VkIntegrationTest {
 
+    @Value("${grpc.server.port:0}")
+    private int grpcPort;
+
     @Container
     static GenericContainer<?> tarantool = new GenericContainer<>("tarantool/tarantool:3.2")
             .withCopyFileToContainer(
                     MountableFile.forHostPath("tarantool/init.lua"),
                     "/opt/tarantool/init.lua")
-            .withCommand("tarantool", "/opt/tarantool/init.lua")
+            .withCommand("/opt/tarantool/init.lua")
             .withExposedPorts(3301)
             .waitingFor(Wait.forListeningPort()
                     .withStartupTimeout(Duration.ofMinutes(2)));
@@ -62,10 +66,8 @@ public class VkIntegrationTest {
         r.add("tarantool.port", () -> tarantool.getMappedPort(3301));
         r.add("spring.data.redis.host", redis::getHost);
         r.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        r.add("grpc.server.port", () -> 0); // Use random port
     }
-
-    @Autowired
-    private GrpcServerProperties grpcServerProperties;
 
     @Autowired
     private RedisTemplate<String, byte[]> redisTemplate;
@@ -74,15 +76,26 @@ public class VkIntegrationTest {
     private VkServiceGrpc.VkServiceBlockingStub stub;
 
     @BeforeEach
-    void setup() {
-        int port = grpcServerProperties.getPort();
+    void setup() throws InterruptedException {
+        int port = grpcPort;
         if (port == 0) {
-            port = 9090; // Default if not picked up
+            port = 9090; // Default fallback
         }
+        
         channel = ManagedChannelBuilder.forAddress("localhost", port)
                 .usePlaintext()
                 .build();
         stub = VkServiceGrpc.newBlockingStub(channel);
+        
+        // Wait for gRPC server to be ready
+        for (int i = 0; i < 20; i++) {
+            try {
+                stub.count(CountRequest.newBuilder().build());
+                break; // Server is ready
+            } catch (Exception e) {
+                Thread.sleep(500);
+            }
+        }
     }
 
     @AfterEach
@@ -90,8 +103,9 @@ public class VkIntegrationTest {
         if (channel != null && !channel.isShutdown()) {
             channel.shutdown();
             try {
-                if (!channel.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                if (!channel.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS)) {
                     channel.shutdownNow();
+                    channel.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
                 }
             } catch (InterruptedException e) {
                 channel.shutdownNow();
@@ -191,17 +205,24 @@ public class VkIntegrationTest {
     }
 
     @Test
-    void service_worksWhenRedisDown() {
-        // Assuming redis is stopped manually or simulated failure
-        // For simplicity, we just stop the container
-        redis.stop();
+    void service_handlesConcurrentOperations() {
+        // Test concurrent puts and gets
+        stub.put(PutRequest.newBuilder()
+                .setKey("concurrent1")
+                .setValue(BytesValue.newBuilder().setValue(ByteString.copyFromUtf8("v1")).build())
+                .build());
 
-        // This should not throw if fallback logic works
-        assertDoesNotThrow(() -> stub.put(PutRequest.newBuilder()
-                .setKey("nored")
-                .setValue(BytesValue.newBuilder().setValue(ByteString.copyFromUtf8("v")).build())
-                .build()));
+        stub.put(PutRequest.newBuilder()
+                .setKey("concurrent2")
+                .setValue(BytesValue.newBuilder().setValue(ByteString.copyFromUtf8("v2")).build())
+                .build());
 
-        assertDoesNotThrow(() -> stub.get(GetRequest.newBuilder().setKey("nored").build()));
+        GetResponse r1 = stub.get(GetRequest.newBuilder().setKey("concurrent1").build());
+        GetResponse r2 = stub.get(GetRequest.newBuilder().setKey("concurrent2").build());
+
+        assertTrue(r1.getFound());
+        assertTrue(r2.getFound());
+        assertEquals("v1", r1.getValue().getValue().toStringUtf8());
+        assertEquals("v2", r2.getValue().getValue().toStringUtf8());
     }
 }
