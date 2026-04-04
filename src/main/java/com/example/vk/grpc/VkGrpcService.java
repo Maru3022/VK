@@ -19,14 +19,15 @@ import com.google.protobuf.BytesValue;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import net.devh.boot.grpc.server.service.GrpcService;
 
-@Slf4j
 @GrpcService
 @RequiredArgsConstructor
 public class VkGrpcService extends VkServiceGrpc.VkServiceImplBase {
 
+    private static final Logger log = LoggerFactory.getLogger(VkGrpcService.class);
     private final VkService vkService;
 
     @Override

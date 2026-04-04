@@ -1,13 +1,12 @@
 package com.example.vk.config;
 
 import io.tarantool.driver.api.TarantoolClient;
-import io.tarantool.driver.api.TarantoolClientConfig;
-import io.tarantool.driver.api.TarantoolClusterAddressProvider;
+import io.tarantool.driver.api.TarantoolResult;
 import io.tarantool.driver.api.TarantoolServerAddress;
-import io.tarantool.driver.api.TarantoolSpaceOperations;
+import io.tarantool.driver.api.space.TarantoolSpaceOperations;
 import io.tarantool.driver.api.tuple.TarantoolTuple;
+import io.tarantool.driver.api.TarantoolClientBuilder;
 import io.tarantool.driver.auth.SimpleTarantoolCredentials;
-import io.tarantool.driver.core.DefaultTarantoolClientFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,28 +37,20 @@ public class TarantoolConfig {
     @Value("${tarantool.pool.min-connections:2}")
     private int minConnections;
 
-    @Value("${tarantool.pool.max-connections:10}")
-    private int maxConnections;
-
     @Bean
-    public TarantoolClient<TarantoolTuple> tarantoolClient() {
-        TarantoolClientConfig config = TarantoolClientConfig.builder()
+    public TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> tarantoolClient() {
+        return TarantoolClientBuilder.create()
+                .withAddress(host, port)
+                .withCredentials(new SimpleTarantoolCredentials(user, password))
                 .withConnectTimeout(connectTimeout)
                 .withReadTimeout(readTimeout)
                 .withConnections(minConnections)
-                .withMaxConnections(maxConnections)
-                .withCredentials(new SimpleTarantoolCredentials(user, password))
                 .build();
-
-        TarantoolClusterAddressProvider addressProvider = () -> 
-                Collections.singletonList(new TarantoolServerAddress(host, port));
-
-        return new DefaultTarantoolClientFactory()
-                .createClient(config, addressProvider);
     }
 
     @Bean
-    public TarantoolSpaceOperations<TarantoolTuple> tarantoolSpaceOperations(TarantoolClient<TarantoolTuple> client) {
+    public TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> tarantoolSpaceOperations(
+            TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client) {
         return client.space("VK");
     }
 }
