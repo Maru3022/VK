@@ -2,6 +2,8 @@ package com.example.vk.metrics;
 
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +19,11 @@ public class RedisHealthIndicator implements HealthIndicator {
     @Override
     public Health health() {
         try {
-            String pong = redisTemplate.execute(connection -> connection.ping());
+            RedisCallback<String> pingCallback = (RedisCallback<String>) connection -> {
+                String pong = connection.ping();
+                return pong;
+            };
+            String pong = redisTemplate.execute(pingCallback);
             if ("PONG".equals(pong)) {
                 return Health.up().withDetail("redis", "PONG").build();
             }
