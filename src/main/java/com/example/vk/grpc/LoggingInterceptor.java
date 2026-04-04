@@ -1,17 +1,14 @@
 package com.example.vk.grpc;
 
-import io.grpc.ForwardingServerCall;
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
-import io.grpc.Status;
-import lombok.extern.slf4j.Slf4j;
-import net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor;
+import io.grpc.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
-@Slf4j
-@GrpcGlobalServerInterceptor
+@Component
 public class LoggingInterceptor implements ServerInterceptor {
+
+    private static final Logger log = LoggerFactory.getLogger(LoggingInterceptor.class);
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
@@ -19,14 +16,17 @@ public class LoggingInterceptor implements ServerInterceptor {
             Metadata headers,
             ServerCallHandler<ReqT, RespT> next) {
 
-        long startTime = System.currentTimeMillis();
         String methodName = call.getMethodDescriptor().getFullMethodName();
+        log.info("Received gRPC call: {}", methodName);
 
-        return next.interceptCall(new ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
+        return next.startCall(new ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
             @Override
             public void close(Status status, Metadata trailers) {
-                long duration = System.currentTimeMillis() - startTime;
-                log.info("Method: {}, Status: {}, Duration: {}ms", methodName, status.getCode(), duration);
+                if (status.isOk()) {
+                    log.info("Finished gRPC call: {} with status OK", methodName);
+                } else {
+                    log.warn("Finished gRPC call: {} with status {}", methodName, status.getCode());
+                }
                 super.close(status, trailers);
             }
         }, headers);

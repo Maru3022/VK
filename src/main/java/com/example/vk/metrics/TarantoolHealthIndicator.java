@@ -1,8 +1,11 @@
 package com.example.vk.metrics;
 
 import io.tarantool.driver.api.TarantoolClient;
+import io.tarantool.driver.api.TarantoolResult;
 import io.tarantool.driver.api.tuple.TarantoolTuple;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.stereotype.Component;
@@ -11,14 +14,16 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class TarantoolHealthIndicator implements HealthIndicator {
 
-    private final TarantoolClient<TarantoolTuple> client;
+    private static final Logger log = LoggerFactory.getLogger(TarantoolHealthIndicator.class);
+    private final TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client;
 
     @Override
     public Health health() {
         try {
             client.eval("return 1").get();
-            return Health.up().build();
+            return Health.up().withDetail("database", "Tarantool").build();
         } catch (Exception e) {
+            log.error("Tarantool health check failed", e);
             return Health.down().withDetail("error", e.getMessage()).build();
         }
     }

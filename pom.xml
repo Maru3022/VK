@@ -18,7 +18,7 @@
     <properties>
         <java.version>21</java.version>
         <tarantool.driver.version>0.14.3</tarantool.driver.version>
-        <tarantool.testcontainers.version>1.5.0</tarantool.testcontainers.version>
+        <tarantool.testcontainers.version>1.4.0</tarantool.testcontainers.version>
         <grpc.spring.boot.starter.version>3.1.0.RELEASE</grpc.spring.boot.starter.version>
         <protobuf.version>3.25.1</protobuf.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
@@ -152,6 +152,22 @@
             </extension>
         </extensions>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.30</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

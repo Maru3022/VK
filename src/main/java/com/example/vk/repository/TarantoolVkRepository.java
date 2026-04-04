@@ -7,14 +7,15 @@ import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import io.tarantool.driver.api.TarantoolClient;
 import io.tarantool.driver.api.TarantoolResult;
-import io.tarantool.driver.api.TarantoolSpaceOperations;
-import io.tarantool.driver.api.conditions.TarantoolConditions;
+import io.tarantool.driver.api.space.TarantoolSpaceOperations;
+import io.tarantool.driver.api.conditions.Conditions;
 import io.tarantool.driver.api.tuple.DefaultTarantoolTupleFactory;
 import io.tarantool.driver.api.tuple.TarantoolTuple;
 import io.tarantool.driver.api.tuple.TarantoolTupleFactory;
-import io.tarantool.driver.mappers.DefaultMessagePackMapperFactory;
+import io.tarantool.driver.mappers.DefaultMessagePackMapper;
 import io.tarantool.driver.mappers.MessagePackMapper;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -22,19 +23,20 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
-@Slf4j
 @Repository
 public class TarantoolVkRepository {
 
-    private final TarantoolClient<TarantoolTuple> client;
-    private final TarantoolSpaceOperations<TarantoolTuple> space;
+    private static final Logger log = LoggerFactory.getLogger(TarantoolVkRepository.class);
+    private final TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client;
+    private final TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> space;
     private final TarantoolTupleFactory tupleFactory;
 
-    public TarantoolVkRepository(TarantoolClient<TarantoolTuple> client,
-                                 TarantoolSpaceOperations<TarantoolTuple> space) {
+    public TarantoolVkRepository(TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client,
+                                 TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> space) {
         this.client = client;
         this.space = space;
-        MessagePackMapper mapper = DefaultMessagePackMapperFactory.getInstance().defaultComplexTypesMapper();
+        // In 0.14.3, we can create a new mapper
+        MessagePackMapper mapper = new DefaultMessagePackMapper();
         this.tupleFactory = new DefaultTarantoolTupleFactory(mapper);
     }
 
@@ -53,7 +55,7 @@ public class TarantoolVkRepository {
     public VkValue get(String key) {
         log.debug("Tarantool get: key={}", key);
         try {
-            TarantoolResult<TarantoolTuple> result = space.select(TarantoolConditions.equals("primary", List.of(key))).get();
+            TarantoolResult<TarantoolTuple> result = space.select(Conditions.equals("primary", List.of(key))).get();
             if (result.isEmpty()) {
                 return VkValue.notFound();
             }
@@ -69,7 +71,7 @@ public class TarantoolVkRepository {
     public boolean delete(String key) {
         log.debug("Tarantool delete: key={}", key);
         try {
-            TarantoolResult<TarantoolTuple> result = space.delete(TarantoolConditions.equals("primary", List.of(key))).get();
+            TarantoolResult<TarantoolTuple> result = space.delete(Conditions.equals("primary", List.of(key))).get();
             return !result.isEmpty();
         } catch (InterruptedException | ExecutionException e) {
             throw new VkException("UNAVAILABLE", "Tarantool delete failed", e);
@@ -95,7 +97,7 @@ public class TarantoolVkRepository {
             String currentKey = keySince;
             while (true) {
                 TarantoolResult<TarantoolTuple> batch = space.select(
-                        TarantoolConditions.greaterOrEquals("primary", List.of(currentKey))
+                        Conditions.greaterOrEquals("primary", List.of(currentKey))
                                 .withLimit(pageSize)
                 ).get();
 
@@ -124,8 +126,9 @@ public class TarantoolVkRepository {
                     break;
                 }
                 
-                // Move to next batch
-                currentKey = lastKey + "\0"; // Small hack to get next key after lastKey
+                // Move to next batch. We append a null byte (\0) to the last key 
+                // to get the next lexicographical key for the GE (Greater-Equal) iterator.
+                currentKey = lastKey + "\0";
             }
             observer.onCompleted();
         } catch (Exception e) {
