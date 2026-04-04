@@ -34,7 +34,7 @@ jobs:
       - uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: target/surefire-reports/*.xml
+          files: target/surefire-reports/TEST-*.xml
       - uses: codecov/codecov-action@v5
         if: always()
         with:
@@ -88,7 +88,9 @@ jobs:
       - uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: target/failsafe-reports/*.xml
+          files: |
+            target/failsafe-reports/TEST-*.xml
+            target/surefire-reports/TEST-*.xml
           check_name: Integration Tests
 
   docker-build-push:

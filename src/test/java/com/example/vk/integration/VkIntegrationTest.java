@@ -45,7 +45,8 @@ public class VkIntegrationTest {
     static TarantoolContainer tarantool = new TarantoolContainer("tarantool/tarantool:3.2")
             .withCopyFileToContainer(
                     MountableFile.forHostPath("tarantool/init.lua"),
-                    "/opt/tarantool/init.lua");
+                    "/opt/tarantool/init.lua")
+            .waitingFor(Wait.forLogMessage(".*listening on.*", 1));
 
     @Container
     static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
