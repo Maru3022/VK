@@ -44,3 +44,9 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 10s
       retries: 5
+    networks:
+      - vk-network
+
+networks:
+  vk-network:
+    driver: bridge

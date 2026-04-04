@@ -18,7 +18,7 @@ groups:
         annotations: {summary: "p99 latency > 500ms"}
 
       - alert: VkRedisDown
-        expr: redis_up == 0
+        expr: spring_data_redis_connection_factory_active_connections{state="down"} == 1 or on() up{job="vk-service"} == 0
         for: 30s
         labels: {severity: critical}
-        annotations: {summary: "Redis is down"}
+        annotations: {summary: "Redis health check is down"}

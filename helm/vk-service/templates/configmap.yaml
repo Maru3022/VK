@@ -8,4 +8,4 @@ data:
   TARANTOOL_USER: {{ .Values.tarantool.user | quote }}
   REDIS_HOST: {{ .Values.redis.host | quote }}
   REDIS_PORT: {{ .Values.redis.port | quote }}
-  REDIS_TTL_SECONDS: {{ .Values.redis.ttlSeconds | quote }}
+  REDIS_TTL-SECONDS: {{ .Values.redis.ttlSeconds | quote }}

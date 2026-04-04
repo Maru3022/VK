@@ -28,8 +28,11 @@ public class TarantoolHealthIndicator implements HealthIndicator {
             if (client == null) {
                 return Health.unknown().withDetail("database", "Tarantool client not available").build();
             }
-            client.eval("return 1").get();
+            client.eval("return 1").get(3, java.util.concurrent.TimeUnit.SECONDS);
             return Health.up().withDetail("database", "Tarantool").build();
+        } catch (java.util.concurrent.TimeoutException e) {
+            log.error("Tarantool health check timed out");
+            return Health.down().withDetail("error", "Health check timed out after 3s").build();
         } catch (Exception e) {
             log.error("Tarantool health check failed", e);
             return Health.down().withDetail("error", e.getMessage()).build();

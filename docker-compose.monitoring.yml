@@ -5,6 +5,7 @@ services:
     image: prom/prometheus:latest
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml
     ports:
       - "9091:9090"
 
@@ -16,11 +17,6 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
     depends_on:
       - prometheus
-
-networks:
-  default:
-    external: true
-    name: vk-service_default

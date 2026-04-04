@@ -17,13 +17,13 @@ public class LoggingInterceptor implements ServerInterceptor {
             ServerCallHandler<ReqT, RespT> next) {
 
         String methodName = call.getMethodDescriptor().getFullMethodName();
-        log.info("Received gRPC call: {}", methodName);
+        log.debug("Received gRPC call: {}", methodName);
 
         return next.startCall(new ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
             @Override
             public void close(Status status, Metadata trailers) {
                 if (status.isOk()) {
-                    log.info("Finished gRPC call: {} with status OK", methodName);
+                    log.debug("Finished gRPC call: {} with status OK", methodName);
                 } else {
                     log.warn("Finished gRPC call: {} with status {}", methodName, status.getCode());
                 }

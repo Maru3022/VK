@@ -19,7 +19,7 @@
         <java.version>21</java.version>
         <tarantool.driver.version>0.14.3</tarantool.driver.version>
         <tarantool.testcontainers.version>1.4.0</tarantool.testcontainers.version>
-        <grpc.spring.boot.starter.version>4.1.0</grpc.spring.boot.starter.version>
+        <grpc-spring-boot-starter.version>3.2.0.RELEASE</grpc-spring-boot-starter.version>
         <protobuf.version>3.25.1</protobuf.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
         <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
@@ -43,8 +43,14 @@
         <!-- gRPC -->
         <dependency>
             <groupId>net.devh</groupId>
-            <artifactId>grpc-spring-boot-starter</artifactId>
-            <version>${grpc.spring.boot.starter.version}</version>
+            <artifactId>grpc-server-spring-boot-starter</artifactId>
+            <version>3.1.0.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>net.devh</groupId>
+            <artifactId>grpc-client-spring-boot-starter</artifactId>
+            <version>3.1.0.RELEASE</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>jakarta.annotation</groupId>

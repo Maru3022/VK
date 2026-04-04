@@ -15,6 +15,7 @@ public class VkMetrics {
     private final MeterRegistry registry;
     private final AtomicLong cacheHits = new AtomicLong(0);
     private final AtomicLong cacheTotal = new AtomicLong(0);
+    private final DistributionSummary rangeSummary;
 
     public VkMetrics(MeterRegistry registry) {
         this.registry = registry;
@@ -23,6 +24,9 @@ public class VkMetrics {
             long total = cacheTotal.get();
             return total == 0 ? 0.0 : (double) cacheHits.get() / total;
         }).register(registry);
+
+        this.rangeSummary = DistributionSummary.builder("vk.range.records.returned")
+                .register(registry);
     }
 
     public void recordRequest(String method, boolean success) {
@@ -50,8 +54,6 @@ public class VkMetrics {
     }
 
     public void recordRangeSize(long count) {
-        DistributionSummary.builder("vk.range.records.returned")
-                .register(registry)
-                .record(count);
+        rangeSummary.record(count);
     }
 }
