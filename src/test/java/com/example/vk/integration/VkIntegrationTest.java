@@ -48,7 +48,7 @@ public class VkIntegrationTest {
                     "/opt/tarantool/init.lua")
             .withCommand("tarantool", "/opt/tarantool/init.lua")
             .withExposedPorts(3301)
-            .waitingFor(Wait.forLogMessage(".*listening.*", 1)
+            .waitingFor(Wait.forListeningPort()
                     .withStartupTimeout(Duration.ofMinutes(2)));
 
     @Container
