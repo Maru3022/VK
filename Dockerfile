@@ -8,6 +8,7 @@ RUN mvn package -DskipTests -q
 
 # Stage 2
 FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache curl wget
 RUN addgroup -S vk && adduser -S vk -G vk
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar

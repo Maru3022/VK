@@ -6,6 +6,7 @@ import io.tarantool.driver.api.TarantoolResult;
 import io.tarantool.driver.api.space.TarantoolSpaceOperations;
 import io.tarantool.driver.api.tuple.TarantoolTuple;
 import io.tarantool.driver.auth.SimpleTarantoolCredentials;
+import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,15 +33,18 @@ public class TarantoolConfig {
     @Value("${tarantool.read-timeout-ms:3000}")
     private int readTimeout;
 
+    private TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client;
+
     @Bean
     @Lazy
     public TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> tarantoolClient() {
-        return TarantoolClientFactory.createClient()
+        client = TarantoolClientFactory.createClient()
                 .withAddress(host, port)
                 .withCredentials(new SimpleTarantoolCredentials(user, password))
                 .withConnectTimeout(connectTimeout)
                 .withReadTimeout(readTimeout)
                 .build();
+        return client;
     }
 
     @Bean
@@ -48,5 +52,16 @@ public class TarantoolConfig {
     public TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> tarantoolSpaceOperations(
             TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client) {
         return client.space("VK");
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        if (client != null) {
+            try {
+                client.close();
+            } catch (Exception e) {
+                // Log but don't throw - cleanup best effort
+            }
+        }
     }
 }

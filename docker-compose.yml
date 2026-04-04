@@ -8,10 +8,11 @@ services:
     ports:
       - "3301:3301"
     healthcheck:
-      test: ["CMD", "tt", "status"]
+      test: ["CMD", "tarantool", "-e", "require('console').connect('localhost:3301')"]
       interval: 5s
-      timeout: 3s
+      timeout: 5s
       retries: 10
+      start_period: 10s
 
   redis:
     image: redis:7-alpine

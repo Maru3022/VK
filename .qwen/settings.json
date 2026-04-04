@@ -10,7 +10,8 @@
       "Bash(git stash)",
       "WebFetch(github.com)",
       "WebFetch(repo1.maven.org)",
-      "WebFetch(raw.githubusercontent.com)"
+      "WebFetch(raw.githubusercontent.com)",
+      "Bash(mvn *)"
     ]
   },
   "$version": 3

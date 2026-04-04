@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: {{ include "vk-service.fullname" . }}
   labels:
-    app: vk-service
+    {{- include "vk-service.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -16,4 +16,4 @@ spec:
       protocol: TCP
       name: metrics
   selector:
-    app: vk-service
+    {{- include "vk-service.selectorLabels" . | nindent 4 }}

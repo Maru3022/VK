@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: {{ include "vk-service.fullname" . }}
   labels:
-    app: vk-service
+    {{- include "vk-service.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
@@ -13,11 +13,11 @@ spec:
       maxSurge: 1
   selector:
     matchLabels:
-      app: vk-service
+      {{- include "vk-service.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: vk-service
+        {{- include "vk-service.selectorLabels" . | nindent 8 }}
     spec:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -25,7 +25,7 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels:
-              app: vk-service
+              {{- include "vk-service.selectorLabels" . | nindent 14 }}
       containers:
         - name: vk-service
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

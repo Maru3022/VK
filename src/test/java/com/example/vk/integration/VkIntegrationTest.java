@@ -87,8 +87,16 @@ public class VkIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        if (channel != null) {
+        if (channel != null && !channel.isShutdown()) {
             channel.shutdown();
+            try {
+                if (!channel.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    channel.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                channel.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

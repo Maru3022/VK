@@ -10,8 +10,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +18,9 @@ public class VkServiceTest {
 
     @Mock
     private VkCacheService cacheService;
+
+    @Mock
+    private com.example.vk.metrics.VkMetrics metrics;
 
     @InjectMocks
     private VkService vkService;

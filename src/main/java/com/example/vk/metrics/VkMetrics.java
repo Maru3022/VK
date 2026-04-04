@@ -26,7 +26,7 @@ public class VkMetrics {
     }
 
     public void recordRequest(String method, boolean success) {
-        Counter.builder("vk.requests.total")
+        Counter.builder("vk_requests_total")
                 .tag("method", method)
                 .tag("status", success ? "success" : "error")
                 .register(registry)

@@ -11,6 +11,19 @@ target/
 *.tar.gz
 *.rar
 
+# Build tools
+dependency-check-report.*
+jacoco.exec
+
+# Docker volumes
+tarantool/*.snap
+tarantool/*.xlog
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
 # IDEs
 .vscode/
 .idea/
@@ -22,7 +35,14 @@ target/
 .classpath/
 .nbsetup/
 .metadata/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+logs/
+*.log

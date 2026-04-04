@@ -3,12 +3,9 @@ kind: ConfigMap
 metadata:
   name: {{ include "vk-service.fullname" . }}-config
 data:
-  application.yml: |
-    tarantool:
-      host: {{ .Values.tarantool.host }}
-      port: {{ .Values.tarantool.port }}
-      user: {{ .Values.tarantool.user }}
-    redis:
-      host: {{ .Values.redis.host }}
-      port: {{ .Values.redis.port }}
-      ttl-seconds: {{ .Values.redis.ttlSeconds }}
+  TARANTOOL_HOST: {{ .Values.tarantool.host | quote }}
+  TARANTOOL_PORT: {{ .Values.tarantool.port | quote }}
+  TARANTOOL_USER: {{ .Values.tarantool.user | quote }}
+  REDIS_HOST: {{ .Values.redis.host | quote }}
+  REDIS_PORT: {{ .Values.redis.port | quote }}
+  REDIS_TTL_SECONDS: {{ .Values.redis.ttlSeconds | quote }}

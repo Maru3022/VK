@@ -16,6 +16,7 @@ import io.tarantool.driver.mappers.DefaultMessagePackMapper;
 import io.tarantool.driver.mappers.MessagePackMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -29,8 +30,8 @@ public class TarantoolVkRepository {
     private final TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> space;
     private final TarantoolTupleFactory tupleFactory;
 
-    public TarantoolVkRepository(TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client,
-                                 TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> space) {
+    public TarantoolVkRepository(@Lazy TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client,
+                                 @Lazy TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> space) {
         this.client = client;
         this.space = space;
         MessagePackMapper mapper = new DefaultMessagePackMapper();
