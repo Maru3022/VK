@@ -2,12 +2,12 @@ package com.example.vk.config;
 
 import io.tarantool.driver.api.TarantoolClient;
 import io.tarantool.driver.api.TarantoolClientConfig;
+import io.tarantool.driver.api.TarantoolClientFactory;
 import io.tarantool.driver.api.TarantoolClusterAddressProvider;
 import io.tarantool.driver.api.TarantoolServerAddress;
 import io.tarantool.driver.api.TarantoolSpaceOperations;
 import io.tarantool.driver.api.tuple.TarantoolTuple;
 import io.tarantool.driver.auth.SimpleTarantoolCredentials;
-import io.tarantool.driver.core.DefaultTarantoolClientFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,16 +46,13 @@ public class TarantoolConfig {
         TarantoolClientConfig config = TarantoolClientConfig.builder()
                 .withConnectTimeout(connectTimeout)
                 .withReadTimeout(readTimeout)
-                .withConnections(minConnections)
-                .withMaxConnections(maxConnections)
                 .withCredentials(new SimpleTarantoolCredentials(user, password))
                 .build();
 
-        TarantoolClusterAddressProvider addressProvider = () -> 
+        TarantoolClusterAddressProvider addressProvider = () ->
                 Collections.singletonList(new TarantoolServerAddress(host, port));
 
-        return new DefaultTarantoolClientFactory()
-                .createClient(config, addressProvider);
+        return TarantoolClientFactory.createClient(config, addressProvider);
     }
 
     @Bean
