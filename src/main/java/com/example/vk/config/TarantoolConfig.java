@@ -9,6 +9,7 @@ import io.tarantool.driver.auth.SimpleTarantoolCredentials;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
 @Configuration
 public class TarantoolConfig {
@@ -32,6 +33,7 @@ public class TarantoolConfig {
     private int readTimeout;
 
     @Bean
+    @Lazy
     public TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> tarantoolClient() {
         return TarantoolClientFactory.createClient()
                 .withAddress(host, port)
@@ -42,6 +44,7 @@ public class TarantoolConfig {
     }
 
     @Bean
+    @Lazy
     public TarantoolSpaceOperations<TarantoolTuple, TarantoolResult<TarantoolTuple>> tarantoolSpaceOperations(
             TarantoolClient<TarantoolTuple, TarantoolResult<TarantoolTuple>> client) {
         return client.space("VK");
