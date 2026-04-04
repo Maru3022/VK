@@ -25,12 +25,12 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.TarantoolContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -42,11 +42,14 @@ import static org.junit.jupiter.api.Assertions.*;
 public class VkIntegrationTest {
 
     @Container
-    static TarantoolContainer tarantool = new TarantoolContainer("tarantool/tarantool:3.2")
+    static GenericContainer<?> tarantool = new GenericContainer<>("tarantool/tarantool:3.2")
             .withCopyFileToContainer(
                     MountableFile.forHostPath("tarantool/init.lua"),
                     "/opt/tarantool/init.lua")
-            .waitingFor(Wait.forLogMessage(".*listening on.*", 1));
+            .withCommand("tarantool", "/opt/tarantool/init.lua")
+            .withExposedPorts(3301)
+            .waitingFor(Wait.forLogMessage(".*listening.*", 1)
+                    .withStartupTimeout(Duration.ofMinutes(2)));
 
     @Container
     static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
